@@ -13,6 +13,8 @@ wasmer run . --registry=wasmer.wtf
 
 > Note: you'll need Wasmer 6.1.0-rc.2 to run this. . Check the [installation instructions here](https://github.com/wasmerio/wasmer/releases/tag/v6.1.0-rc.2).
 
+All Native Python packages that are available right now in Wasmer can be found here:
+https://wasix-org.github.io/build-scripts/
 
 # How to install dependencies
 
