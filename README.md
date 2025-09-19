@@ -1,37 +1,66 @@
-# Run it with Wasmer
+# FastAPI + Wasmer
 
-First, install dependencies:
+This example shows how to run a minimal **FastAPI** app on **Wasmer Edge**.
 
-```
-pip install -r wasmer-requirements.txt --target wasix-site-packages --platform wasix_wasm32 --only-binary=:all: --python-version=3.13 --compile
-```
+## Demo
 
-And then (*the first time it runs it will take about a few minutes to compile Python*):
-```
-wasmer run . --registry=wasmer.wtf
-```
+https://fastapi-templat.wasmer.app/
 
-> Note: you'll need Wasmer 6.1.0-rc.2 to run this. . Check the [installation instructions here](https://github.com/wasmerio/wasmer/releases/tag/v6.1.0-rc.2).
+## How it Works
 
-All Native Python packages that are available right now in Wasmer can be found here:
-https://pythonindex.wasix.org/
+Your FastAPI application exposes a module-level **ASGI** application named `app` in `main.py`:
 
-# How to install dependencies
+```python
+# main.py
+from fastapi import FastAPI
 
-This process is going to be streamlined using wasmer's autobuild, so you just need to upload a zip with the source and `requirements.txt`. Until that happens, please do:
+app = FastAPI()
 
-## If you have `pyproject.toml`
+@app.get("/")
+async def root():
+    return {"message": "Hello World"}
 
-> Note: Right now, the process is not ideal as it's using `uvx pip` instead of `uv pip`, but we need to create a PR to `uv` to support `wasix_wasm32` target first.
-
-```
-uv pip compile pyproject.toml --python-version=3.13 --universal --extra-index-url https://pythonindex.wasix.org/simple --index-url=https://pypi.org/simple --emit-index-url --only-binary :all: -o wasmer-requirements.txt
-uvx pip install -r wasmer-requirements.txt --target wasix-site-packages --platform wasix_wasm32 --only-binary=:all: --python-version=3.13 --compile
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
 ```
 
-## If you have `requirements.txt`
+Key points:
 
+* The `app` variable is the ASGI application that Wasmer Edge runs (e.g., `main:app`).
+* A single `GET /` route returns JSON: `{"message": "Hello World"}`.
+* When executed directly (`python main.py`), it serves via Uvicorn on port `8000`.
+
+This example uses **ASGI** with FastAPI to handle requests on Wasmer Edge.
+
+## Running Locally
+
+Choose one of the following:
+
+```bash
+# Option 1: Run the file directly (uses the __main__ block)
+python main.py
 ```
-pip install -r requirements.txt --target wasix-site-packages --platform wasix_wasm32 --only-binary=:all: --python-version=3.13 --index-url https://pypi.org/simple
---extra-index-url https://pythonindex.wasix.org/simple --compile
+
+```bash
+# Option 2: Use uvicorn explicitly
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
+
+Your FastAPI application is now available at `http://localhost:8000`.
+
+## Routing Overview
+
+* `GET /` → returns:
+
+  ```json
+  { "message": "Hello World" }
+  ```
+
+## Deploying to Wasmer Edge (Overview)
+
+1. Ensure your project exposes `main:app`.
+2. Deploy to Wasmer Edge
+3. Visit `https://<your-subdomain>.wasmer.app/` to test.
+
+> Tip: Keep the app entrypoint as `main:app` (module\:variable) so the platform can discover it easily.
