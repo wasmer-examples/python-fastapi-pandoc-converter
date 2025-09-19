@@ -4,7 +4,7 @@ This example shows how to run a minimal **FastAPI** app on **Wasmer Edge**.
 
 ## Demo
 
-https://fastapi-templat.wasmer.app/
+https://fastapi-template.wasmer.app/
 
 ## How it Works
 
