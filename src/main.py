@@ -1,3 +1,4 @@
+import asyncio
 import html
 from typing import List
 
@@ -108,7 +109,8 @@ async def convert(
 ) -> str:
     # import time; time.sleep(5) 
     try:
-        converted = pypandoc.convert_text(
+        converted = await asyncio.to_thread(
+            pypandoc.convert_text,
             text,
             to=target_format,
             format=source_format,
