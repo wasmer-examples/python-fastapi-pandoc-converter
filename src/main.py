@@ -10,7 +10,6 @@ app = FastAPI()
 
 SUPPORTED_FORMATS: List[tuple[str, str]] = [
     ("markdown", "Markdown"),
-    ("md", "Markdown (Alias: md)"),
     ("rst", "reStructuredText"),
     ("html", "HTML"),
     ("latex", "LaTeX"),
@@ -27,7 +26,11 @@ ROOT_TEMPLATE = r"""
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Pandoc Converter</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css" />
-    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.7/dist/htmx.min.js" integrity="sha384-ZBXiYtYQ6hJ2Y0ZNoYuI+Nq5MqWBr+chMrS/RkXpNzQCApHEhOt2aY8EJgqwHLkJ" crossorigin="anonymous"></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.7/dist/htmx.min.js"
+      integrity="sha384-ZBXiYtYQ6hJ2Y0ZNoYuI+Nq5MqWBr+chMrS/RkXpNzQCApHEhOt2aY8EJgqwHLkJ"
+      crossorigin="anonymous">
+    </script>
   </head>
   <body class="has-background-light">
     <section class="section">
@@ -36,7 +39,7 @@ ROOT_TEMPLATE = r"""
         <p class="subtitle">Convert text between markup formats without leaving your browser.</p>
         <form
           class="box"
-          hx-post="/convert"
+          hx-post="/api/hx/convert"
           hx-target="#conversion-result"
           hx-swap="innerHTML"
           hx-disabled-elt=".button-submit"
@@ -87,42 +90,6 @@ ROOT_TEMPLATE = r"""
 </html>
 """
 
-
-def _format_options() -> str:
-    options = []
-    for value, label in SUPPORTED_FORMATS:
-        options.append(f'<option value="{value}">{html.escape(label)}</option>')
-    return "\n".join(options)
-
-
-@app.get("/", response_class=HTMLResponse)
-async def root() -> str:
-    format_options = _format_options()
-    return ROOT_TEMPLATE.replace("{format_options}", format_options)
-
-
-@app.post("/convert", response_class=HTMLResponse)
-async def convert(
-    text: str = Form(...),
-    source_format: str = Form(...),
-    target_format: str = Form(...),
-) -> str:
-    # import time; time.sleep(5) 
-    try:
-        converted = await asyncio.to_thread(
-            pypandoc.convert_text,
-            text,
-            to=target_format,
-            format=source_format,
-        )
-    except (RuntimeError, OSError) as exc:
-        escaped_error = html.escape(str(exc))
-        return ERROR_TEMPLATE.replace("{escaped_error}", escaped_error)
-
-    escaped_result = html.escape(converted)
-    return SUCCESS_TEMPLATE.replace("{escaped_result}", escaped_result)
-
-
 ERROR_TEMPLATE = r"""
 <article class="message is-danger">
   <div class="message-header">
@@ -144,6 +111,40 @@ SUCCESS_TEMPLATE = r"""
 </article>
 """
 
+
+def _format_options() -> str:
+    options = []
+    for value, label in SUPPORTED_FORMATS:
+        options.append(f'<option value="{value}">{html.escape(label)}</option>')
+    return "\n".join(options)
+
+
+@app.get("/", response_class=HTMLResponse)
+async def root() -> str:
+    format_options = _format_options()
+    return ROOT_TEMPLATE.replace("{format_options}", format_options)
+
+
+@app.post("/api/hx/convert", response_class=HTMLResponse)
+async def convert(
+    text: str = Form(...),
+    source_format: str = Form(...),
+    target_format: str = Form(...),
+) -> str:
+    # import time; time.sleep(5) 
+    try:
+        converted = await asyncio.to_thread(
+            pypandoc.convert_text,
+            text,
+            to=target_format,
+            format=source_format,
+        )
+    except (RuntimeError, OSError) as exc:
+        escaped_error = html.escape(str(exc))
+        return ERROR_TEMPLATE.replace("{escaped_error}", escaped_error)
+
+    escaped_result = html.escape(converted)
+    return SUCCESS_TEMPLATE.replace("{escaped_result}", escaped_result)
 
 if __name__ == "__main__":
     import uvicorn

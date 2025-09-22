@@ -1,6 +1,7 @@
-# FastAPI + Wasmer
+# pandoc-converter - Python fastapi + pandoc example
 
-This example shows how to run a minimal **FastAPI** app on **Wasmer Edge**.
+A simple Wasmer Edge FastAPI application that allows converting between different
+document formats using Pandoc.
 
 ## Demo
 
@@ -48,14 +49,6 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 Your FastAPI application is now available at `http://localhost:8000`.
-
-## Routing Overview
-
-* `GET /` → returns:
-
-  ```json
-  { "message": "Hello World" }
-  ```
 
 ## Deploying to Wasmer Edge (Overview)
 
