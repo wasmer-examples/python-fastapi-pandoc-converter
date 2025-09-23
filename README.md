@@ -4,8 +4,7 @@ This demo shows how to use **pypandoc** (a Python wrapper around Pandoc) to conv
 
 ## Demo
 
-`https:/pandoc-converter-example.wasmer.app/`
-(Replace with your deployed URL.)
+https:/pandoc-converter-example.wasmer.app/
 
 ## How it Works (sections from `app.py`)
 
