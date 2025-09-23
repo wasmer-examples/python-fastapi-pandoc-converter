@@ -1,59 +1,108 @@
-# pandoc-converter - Python fastapi + pandoc example
+# Pandoc Converter (pypandoc) + Wasmer
 
-A simple Wasmer Edge FastAPI application that allows converting between different
-document formats using Pandoc.
+This demo shows how to use **pypandoc** (a Python wrapper around Pandoc) to convert text between markup formats. The program provides a small web UI, but the focus here is on how `pypandoc.convert_text(...)` is used.
 
 ## Demo
 
-https://fastapi-template.wasmer.app/
+`https:/pandoc-converter-example.wasmer.app/`
+(Replace with your deployed URL.)
 
-## How it Works
+## How it Works (sections from `app.py`)
 
-Your FastAPI application exposes a module-level **ASGI** application named `app` in `main.py`:
+All logic lives in one file. Here are the **relevant code sections** related to pypandoc:
+
+### Supported formats
+
+A list of markup formats is declared. These are passed directly to `pypandoc`:
 
 ```python
-# main.py
-from fastapi import FastAPI
-
-app = FastAPI()
-
-@app.get("/")
-async def root():
-    return {"message": "Hello World"}
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+SUPPORTED_FORMATS = [
+    ("markdown", "Markdown"),
+    ("rst", "reStructuredText"),
+    ("html", "HTML"),
+    ("latex", "LaTeX"),
+    ("mediawiki", "MediaWiki"),
+    ("docbook", "DocBook"),
+    ("org", "Org Mode"),
+]
 ```
 
-Key points:
+### Conversion call
 
-* The `app` variable is the ASGI application that Wasmer Edge runs (e.g., `main:app`).
-* A single `GET /` route returns JSON: `{"message": "Hello World"}`.
-* When executed directly (`python main.py`), it serves via Uvicorn on port `8000`.
+The actual conversion happens in the POST request handler. The work is run in a background thread to avoid blocking the server:
 
-This example uses **ASGI** with FastAPI to handle requests on Wasmer Edge.
+```python
+converted = await asyncio.to_thread(
+    pypandoc.convert_text,
+    text,
+    to=target_format,
+    format=source_format,
+)
+```
+
+Key details:
+
+* `format` specifies the **source format**.
+* `to` specifies the **target format**.
+* The return value is the converted text, ready to display or save.
+
+### Error handling
+
+If Pandoc raises an error, it is caught and safely escaped for display:
+
+```python
+except (RuntimeError, OSError) as exc:
+    escaped_error = html.escape(str(exc))
+    return ERROR_TEMPLATE.replace("{escaped_error}", escaped_error)
+```
+
+This ensures that unsupported conversions or missing executables don’t crash the app.
+
+---
 
 ## Running Locally
 
-Choose one of the following:
+1. Create a `requirements.txt`:
 
-```bash
-# Option 1: Run the file directly (uses the __main__ block)
-python main.py
+```
+fastapi
+uvicorn
+pypandoc
 ```
 
+2. Install dependencies:
+
 ```bash
-# Option 2: Use uvicorn explicitly
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+pip install -r requirements.txt
 ```
 
-Your FastAPI application is now available at `http://localhost:8000`.
+3. Run the server:
+
+```bash
+uvicorn app:app --host 0.0.0.0 --port 8000
+```
+
+4. Convert via API (example without UI):
+
+```bash
+curl -X POST http://localhost:8000/api/hx/convert \
+  -F 'source_format=markdown' \
+  -F 'target_format=rst' \
+  -F 'text=# Hello **world**'
+```
+
+The response will contain the converted text wrapped in HTML.
+
+---
 
 ## Deploying to Wasmer Edge (Overview)
 
-1. Ensure your project exposes `main:app`.
-2. Deploy to Wasmer Edge
-3. Visit `https://<your-subdomain>.wasmer.app/` to test.
+1. Include `app.py` and `requirements.txt`.
+2. Deploy to Wasmer Edge and point the web process to run Uvicorn (e.g., `uvicorn app:app --host 0.0.0.0 --port $PORT`).
+3. Open `https://<your-subdomain>.wasmer.app/` and try converting text between formats.
 
-> Tip: Keep the app entrypoint as `main:app` (module\:variable) so the platform can discover it easily.
+---
+
+⚡ With this setup, the key takeaway is how to call **`pypandoc.convert_text`** with `format` and `to` arguments to transform text between markup languages.
+
+Would you like me to also add a **minimal example without FastAPI** (just showing `pypandoc.convert_text` in a script) so the README highlights the conversion part even more directly?
