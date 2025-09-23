@@ -92,6 +92,14 @@ curl -X POST http://localhost:8000/api/hx/convert \
 
 The response will contain the converted text wrapped in HTML.
 
+API endpoints:
+
+- GET `/api/pandoc-convert?from=markdown&to=html&text=...` returns converted content as plain text.
+- POST `/api/pandoc-convert?from=markdown&to=html` with form field `text` returns converted content as plain text.
+
+On failure, endpoints return JSON `{ "error": "<msg>" }` with status 400.
+
+
 ---
 
 ## Deploying to Wasmer Edge (Overview)

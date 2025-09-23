@@ -3,10 +3,11 @@ import html
 from typing import List
 
 import pypandoc
-from fastapi import FastAPI, Form
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, Form, Query
+from fastapi.responses import HTMLResponse, PlainTextResponse, JSONResponse
+from fastapi import Body
 
-app = FastAPI()
+app = FastAPI(title="pandoc-converter")
 
 SUPPORTED_FORMATS: List[tuple[str, str]] = [
     ("markdown", "Markdown"),
@@ -37,6 +38,10 @@ ROOT_TEMPLATE = r"""
       <div class="container">
         <h1 class="title">Pandoc Converter</h1>
         <p class="subtitle">Convert text between markup formats without leaving your browser.</p>
+        <p>
+          Hint: You can also use the <a href="/docs">REST API</a>.
+        </p>
+        <br />
         <form
           class="box"
           hx-post="/api/hx/convert"
@@ -119,19 +124,19 @@ def _format_options() -> str:
     return "\n".join(options)
 
 
-@app.get("/", response_class=HTMLResponse)
+@app.get("/", response_class=HTMLResponse, include_in_schema=False)
 async def root() -> str:
     format_options = _format_options()
     return ROOT_TEMPLATE.replace("{format_options}", format_options)
 
 
-@app.post("/api/hx/convert", response_class=HTMLResponse)
+@app.post("/api/hx/convert", response_class=HTMLResponse, include_in_schema=False)
 async def convert(
     text: str = Form(...),
     source_format: str = Form(...),
     target_format: str = Form(...),
 ) -> str:
-    # import time; time.sleep(5) 
+    # import time; time.sleep(5)
     try:
         converted = await asyncio.to_thread(
             pypandoc.convert_text,
@@ -145,6 +150,79 @@ async def convert(
 
     escaped_result = html.escape(converted)
     return SUCCESS_TEMPLATE.replace("{escaped_result}", escaped_result)
+
+
+@app.get(
+    "/api/pandoc-convert",
+    summary="Convert text using Pandoc (GET)",
+    description=(
+        "Converts the provided text from one markup format to another using Pandoc. "
+        "All parameters are provided via query string."
+    ),
+)
+async def api_pandoc_convert_get(
+    from_: str = Query(
+        ..., alias="from", description="Source format (e.g., 'markdown', 'rst', 'html')."
+    ),
+    to: str = Query(..., description="Target format to convert to."),
+    text: str = Query(..., description="Input text to convert."),
+):
+    """
+    Example
+    -------
+    curl --get 'http://localhost:8000/api/pandoc-convert' \\
+      --data-urlencode 'from=markdown' \\
+      --data-urlencode 'to=html' \\
+      --data-urlencode 'text=# Hello\n\nThis is **Markdown**.'
+    """
+    try:
+        converted = await asyncio.to_thread(
+            pypandoc.convert_text,
+            text,
+            to=to,
+            format=from_,
+        )
+    except (RuntimeError, OSError, ValueError) as exc:
+        return JSONResponse(status_code=400, content={"error": str(exc)})
+
+    return PlainTextResponse(converted)
+
+
+@app.post(
+    "/api/pandoc-convert",
+    summary="Convert text using Pandoc (POST)",
+    description=(
+        "Converts text using Pandoc. Query parameters define formats; the request body "
+        "must include form field 'text' (multipart/form-data or application/x-www-form-urlencoded)."
+    ),
+)
+async def api_pandoc_convert_post(
+    from_: str = Query(
+        ..., alias="from", description="Source format (e.g., 'markdown', 'rst', 'html')."
+    ),
+    to: str = Query(..., description="Target format to convert to."),
+    text: str = Form(..., description="Input text to convert."),
+):
+    """
+    Example
+    -------
+    curl -X POST 'http://localhost:8000/api/pandoc-convert?from=markdown&to=html' \\
+      -F 'text=# Hello\n\nThis is **Markdown**.'
+    """
+    # POST expects query params 'from' and 'to' and form field 'text'
+
+    try:
+        converted = await asyncio.to_thread(
+            pypandoc.convert_text,
+            text,
+            to=to,
+            format=from_,
+        )
+    except (RuntimeError, OSError, ValueError) as exc:
+        return JSONResponse(status_code=400, content={"error": str(exc)})
+
+    return PlainTextResponse(converted)
+
 
 if __name__ == "__main__":
     import uvicorn
